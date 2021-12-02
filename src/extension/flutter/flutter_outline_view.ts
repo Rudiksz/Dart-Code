@@ -256,9 +256,38 @@ export class LspFlutterOutlineProvider extends FlutterOutlineProvider {
 		}
 	}
 
+	private groupAccessors(outline: FlutterOutline) {
+		if (outline.dartElement?.kind === "CLASS" && outline.children) {
+			const newChildren = new Map<string, FlutterOutline>();
+			for (const child of outline.children) {
+				if (child.dartElement?.name && child.dartElement.kind !== "SETTER" && child.dartElement.kind !== "GETTER") {
+					newChildren.set(child.dartElement?.name, child);
+				}
+			}
+			for (const child of outline.children) {
+				if (child.dartElement?.name && (child.dartElement.kind === "SETTER" || child.dartElement.kind === "GETTER") ) {
+					const field = newChildren.get("_" + child.dartElement.name);
+					if (field) {
+						field.children ??= [];
+						field.children.push(child);
+					} else {
+						newChildren.set(child.dartElement?.name, child);
+					}
+				}
+			}
+			outline.children = Array.from(newChildren.values());
+			return;
+		}
+
+		if (outline.children) {
+			outline.children.map(this.groupAccessors);
+		}
+	}
+
 	private async update() {
 		// Build the tree from our outline
 		if (this.flutterOutline) {
+			this.groupAccessors(this.flutterOutline);
 			this.rootNode = await this.createTreeNode(undefined, this.flutterOutline, this.activeEditor);
 			FlutterOutlineProvider.showTree();
 		} else {
@@ -339,7 +368,7 @@ export class FlutterWidgetItem extends vs.TreeItem {
 		super(
 			FlutterWidgetItem.getLabel(outline),
 			(outline.children && outline.children.length)
-				? vs.TreeItemCollapsibleState.Expanded
+				? (outline.dartElement?.kind !== "FIELD" ? vs.TreeItemCollapsibleState.Expanded :  vs.TreeItemCollapsibleState.Collapsed)
 				: vs.TreeItemCollapsibleState.None,
 		);
 

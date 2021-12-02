@@ -71,7 +71,7 @@ export interface FlutterOutline {
 	readonly dartElement?: Element;
 	readonly range: Range;
 	readonly codeRange: Range;
-	readonly children?: FlutterOutline[];
+	children?: FlutterOutline[];
 	readonly kind: string;
 }
 
